@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>棋局的幻觉 — 以博弈论为框架的2026年伊朗战争深度解读</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --ink-light: #444444;
+      --ink-faint: #888888;
+      --paper: #f5f0e8;
+      --paper-warm: #ede8dc;
+      --accent: #8b2e0f;
+      --accent-light: #c4541f;
+      --rule: #c8bfaa;
+      --highlight: #f0e6c8;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 300;
+      line-height: 1.9;
+      font-size: 17px;
+      overflow-x: hidden;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.4;
+    }
+
+    /* Progress bar */
+    .progress {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      background: var(--accent);
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s linear;
+    }
+
+    /* Cover */
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 80px 8vw;
+      position: relative;
+      border-bottom: 1px solid var(--rule);
+      background: linear-gradient(160deg, var(--paper) 0%, var(--paper-warm) 100%);
+    }
+
+    .cover-label {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards 0.2s;
+    }
+
+    .cover-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(56px, 10vw, 120px);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards 0.4s;
+    }
+
+    .cover-title em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .cover-subtitle {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(14px, 2vw, 18px);
+      font-weight: 300;
+      color: var(--ink-light);
+      max-width: 560px;
+      line-height: 1.7;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards 0.6s;
+    }
+
+    .cover-question {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(13px, 1.6vw, 16px);
+      font-style: italic;
+      color: var(--ink-faint);
+      max-width: 520px;
+      margin-bottom: 64px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards 0.8s;
+    }
+
+    .cover-meta {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 12px;
+      color: var(--ink-faint);
+      letter-spacing: 0.1em;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards 1s;
+    }
+
+    .cover-decoration {
+      position: absolute;
+      right: 8vw;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 200px;
+      height: 200px;
+      border: 1px solid var(--rule);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: rotate 60s linear infinite;
+    }
+
+    .cover-decoration::before {
+      content: '';
+      position: absolute;
+      inset: 20px;
+      border: 1px solid var(--rule);
+      border-radius: 50%;
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 40px;
+      left: 8vw;
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 11px;
+      color: var(--ink-faint);
+      letter-spacing: 0.2em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards 1.2s;
+    }
+
+    .scroll-hint::after {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 1px;
+      background: var(--ink-faint);
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 16px 8vw;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(245, 240, 232, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    nav.scrolled {
+      border-color: var(--rule);
+      box-shadow: 0 1px 20px rgba(0,0,0,0.04);
+    }
+
+    .nav-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    nav.scrolled .nav-title { opacity: 1; }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      color: var(--ink-faint);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--accent); }
+
+    /* Main content */
+    main {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 80px 40px 120px;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 80px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .section.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Chapter markers */
+    .chapter-marker {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .chapter-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 72px;
+      font-weight: 700;
+      color: var(--paper-warm);
+      line-height: 1;
+      -webkit-text-stroke: 1px var(--rule);
+      user-select: none;
+    }
+
+    .chapter-info { flex: 1; }
+
+    .chapter-label {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .chapter-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(22px, 4vw, 30px);
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    /* Section titles */
+    h2 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(18px, 3vw, 22px);
+      font-weight: 600;
+      color: var(--ink);
+      margin: 52px 0 20px;
+      padding-top: 32px;
+      border-top: 1px solid var(--rule);
+    }
+
+    h3 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 36px 0 14px;
+    }
+
+    /* Paragraphs */
+    p {
+      margin-bottom: 20px;
+      color: var(--ink-light);
+      text-align: justify;
+      hyphens: auto;
+    }
+
+    /* Pull quotes */
+    blockquote {
+      margin: 40px 0;
+      padding: 28px 32px;
+      background: var(--paper-warm);
+      border-left: 3px solid var(--accent);
+      font-family: 'Noto Serif SC', serif;
+      font-size: 16px;
+      font-style: italic;
+      color: var(--ink);
+      line-height: 1.8;
+      position: relative;
+    }
+
+    blockquote::before {
+      content: '\201C';
+      font-family: 'Playfair Display', serif;
+      font-size: 80px;
+      color: var(--rule);
+      position: absolute;
+      top: -16px;
+      left: 20px;
+      line-height: 1;
+    }
+
+    /* Large pull quote */
+    .pull-quote {
+      margin: 56px -40px;
+      padding: 48px 40px;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(18px, 3vw, 24px);
+      font-style: italic;
+      line-height: 1.7;
+      text-align: center;
+      position: relative;
+    }
+
+    .pull-quote::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    /* Divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 56px 0;
+      color: var(--rule);
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--rule);
+    }
+
+    .divider-symbol {
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    /* Character cards */
+    .character-card {
+      display: grid;
+      grid-template-columns: 4px 1fr;
+      gap: 0 20px;
+      margin: 32px 0;
+      padding: 0;
+    }
+
+    .character-card-bar {
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .character-card-content { padding: 4px 0; }
+
+    .character-name {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    /* Footnote style */
+    .note {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 12px;
+      color: var(--ink-faint);
+      padding: 16px 20px;
+      border: 1px solid var(--rule);
+      margin: 24px 0;
+      line-height: 1.7;
+    }
+
+    /* Conclusion grid */
+    .conclusion-grid {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 16px 20px;
+      margin: 32px 0;
+    }
+
+    .conclusion-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--rule);
+      line-height: 1.4;
+    }
+
+    .conclusion-text {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 15px;
+      color: var(--ink-light);
+      line-height: 1.8;
+      padding-top: 4px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--rule);
+      padding: 48px 8vw;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 12px;
+      color: var(--ink-faint);
+      letter-spacing: 0.05em;
+    }
+
+    /* Intro section */
+    .intro {
+      padding: 64px 0 0;
+    }
+
+    .intro-lead {
+      font-size: clamp(18px, 3vw, 22px);
+      font-weight: 300;
+      color: var(--ink);
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes rotate {
+      from { transform: translateY(-50%) rotate(0deg); }
+      to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      main { padding: 60px 24px 80px; }
+      .pull-quote { margin: 40px -24px; padding: 36px 24px; }
+      .nav-links { display: none; }
+      .cover { padding: 80px 6vw; }
+      .cover-decoration { display: none; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<nav id="nav">
+  <span class="nav-title">棋局的幻觉</span>
+  <ul class="nav-links">
+    <li><a href="#intro">引言</a></li>
+    <li><a href="#part1">博弈结构</a></li>
+    <li><a href="#part2">傲慢与陷阱</a></li>
+    <li><a href="#part3">信誉崩塌</a></li>
+    <li><a href="#part4">掠食者困境</a></li>
+    <li><a href="#part5">权力与真相</a></li>
+    <li><a href="#conclusion">结语</a></li>
+  </ul>
+</nav>
+
+<!-- Cover -->
+<div class="cover">
+  <div class="cover-label">深度解读 · 2026年3月</div>
+  <h1 class="cover-title">棋局的<em>幻觉</em></h1>
+  <p class="cover-subtitle">以博弈论为框架的2026年伊朗战争深度解读</p>
+  <p class="cover-question">当所有人都在理性追求自身利益时，为什么会集体走向一个没有人真正想要的结果？</p>
+  <div class="cover-meta">旁观者视角 · 客观分析 · 逻辑推演</div>
+  <div class="cover-decoration"></div>
+  <div class="scroll-hint">向下阅读</div>
+</div>
+
+<!-- Main -->
+<main>
+
+  <!-- Intro -->
+  <div class="intro section" id="intro">
+    <p class="intro-lead">2026年3月4日，两个人以截然不同的方式触碰了同一个真相。</p>
+
+    <div class="character-card">
+      <div class="character-card-bar"></div>
+      <div class="character-card-content">
+        <div class="character-name">BRIAN McGINNIS · 海军陆战队老兵 · 消防员</div>
+        <p>美国参议院军事委员会听证室内，一个穿着海军陆战队制服的男人站了起来，喊出了一句很多人心里有但没有勇气说的话："美国不想为以色列送儿女去打仗。"Capitol警察冲向他，共和党参议员加入驱逐行列，推搡中一声骨折声响彻听证室。他被逮捕，面临七项指控。他的GoFundMe三天内筹到45000美元——那些钱说明，很多人和他想法相同。</p>
+      </div>
+    </div>
+
+    <div class="character-card">
+      <div class="character-card-bar"></div>
+      <div class="character-card-content">
+        <div class="character-name">江学勤 · 北京大学历史与哲学教授 · 预测历史频道</div>
+        <p>2024年5月，一堂课堂录像被上传到YouTube，几乎无人问津。一年后，当现实追上了那堂课里的预测，视频迅速传播，三天内新增十万订阅者。那堂课里，江学勤用博弈论和历史类比推演了一场尚未发生的战争：特朗普会回来，战争会爆发，美国会输。三个预测，两个已经成真。</p>
+      </div>
+    </div>
+
+    <p>他们是本文的两条叙事线索。一个用身体，一个用逻辑，指向同一个问题：</p>
+
+    <div class="pull-quote">
+      没有人在下棋。每个人都以为自己在下别人的棋，结果发现所有人都在被棋局本身下。
+    </div>
+
+    <p>这是博弈论最深的悖论，也是2026年伊朗战争的真实本质。</p>
+  </div>
+
+  <div class="divider"><span class="divider-symbol">◆</span></div>
+
+  <!-- Part 1 -->
+  <div class="section" id="part1">
+    <div class="chapter-marker">
+      <div class="chapter-number">一</div>
+      <div class="chapter-info">
+        <div class="chapter-label">第一部分</div>
+        <div class="chapter-title">没有人在下棋</div>
+      </div>
+    </div>
+
+    <h2>官方叙事与真实逻辑</h2>
+    <p>2026年2月28日，美以联合军事行动打击伊朗核设施，最高领袖哈梅内伊及40余名高级官员身亡。官方理由是消除核威胁，保护地区稳定，捍卫民主价值。</p>
+    <p>这套叙事在西方主流媒体的框架里逻辑自洽。但如果剥去包装，去问博弈论最基础的问题——谁的行为，在什么激励下，指向什么目标——图景就会完全不同。</p>
+
+    <h2>各方利益的解剖</h2>
+
+    <h3>以色列：存在性焦虑与时间窗口</h3>
+    <p>理解以色列的行为，需要理解一个贯穿其建国史的核心逻辑：生存焦虑。伊朗支持哈马斯、真主党、胡塞武装，从不同方向对以色列形成持续压力。</p>
+    <p>但2026年行动还有一个更深的驱动力——以色列政策圈内公开讨论但很少被外界清晰表述的判断：美国正在走下坡路，这个盟友的能力和意志都在衰减，留给以色列借助美国力量完成战略目标的时间窗口正在关闭。</p>
+    <blockquote>江学勤在一年前的课堂上把这个逻辑说得很清楚：以色列发现召唤神兽的技能还在，但神兽不行了。以前召唤来的是大老虎，现在还是大老虎，但瘸了一条腿。所以以色列着急了，它想在美国彻底不行之前把自己要完成的事完成。</blockquote>
+    <p>从博弈论角度，这是完全理性的时间窗口策略。问题是它的实施方式绑架了美国的战略选择。</p>
+
+    <h3>沙特阿拉伯：零成本收割</h3>
+    <p>沙特在这场战争里的角色最隐蔽，也是收益最不对称的。伊朗是沙特在中东主导地位的唯一真实威胁。一个被削弱的伊朗，意味着沙特可以主导整个海湾秩序。</p>
+    <p>更关键的是：这个目标，沙特不需要自己付出任何直接代价。美国承担军事风险，以色列承担道义争议，沙特作为受害者出现——伊朗导弹确实打了沙特炼油厂。</p>
+    <p>用博弈论的语言描述：这是占优策略——无论其他参与者如何行动，沙特的最优选择始终是支持战争但避免直接参战。</p>
+
+    <h3>伊朗革命卫队：反直觉的真相</h3>
+    <p>这是整个博弈结构里最反直觉的部分。伊朗革命卫队，某种程度上也想要美国入侵。</p>
+    <p>原因不是自杀式的狂热，而是冷静的战略计算：外敌入侵会把所有伊朗人团结在政权周围。内部的改革派、对政府不满的中产阶级——面对美国的军靴踩上伊朗的土地，他们会选择保卫国家而不是推翻政权。</p>
+    <p>伊朗的地理条件决定了美国必输。90万平方公里的山地要塞，8800万人口的巨大抵抗潜力，漫长的补给线——这些因素叠加让任何地面入侵都是战略上的自杀。IRGC的利益指向是：引诱美国更深地介入，制造消耗美国国力的黑洞。</p>
+
+    <h3>美国军工复合体：战争是生意</h3>
+    <p>洛克希德·马丁、雷神、波音——这些公司的股价在战争爆发后上涨。这不是巧合，这是商业模式。战争消耗弹药，弹药消耗创造订单，订单创造利润，利润支撑游说，游说影响政策。</p>
+    <p>这不是阴谋论，这是制度性的利益结构。当推动战争的激励和阻止战争的激励不对称时，系统会倾向于战争。</p>
+
+    <h3>中国与俄罗斯：沉默的受益者</h3>
+    <p>这两个国家的战略选择最简单，也最有效：什么都不做。</p>
+    <p>中国选择了战略沉默。伊朗停火的钥匙在北京手里——中国是伊朗石油的最大买家，占其出口的80%。中国选择不急着用这把钥匙，因为美国深陷中东对中国的台湾战略空间是利好。</p>
+    <p>这是冷战后大国博弈里反复出现的规律：真正的战略赢家，往往不是战场上的任何一方，而是在别人消耗时安静发展的那个旁观者。</p>
+
+    <h2>博弈结构的总体图景</h2>
+    <p>把所有参与者的利益向量放在一起，会得到一个令人不安的发现：几乎所有主要参与者都有理由希望战争发生，但每个人想要的结果完全不同。</p>
+    <p>没有一个人在下一盘棋，但所有人的棋子碰巧都在推动同一个方向——战争的爆发。</p>
+
+    <div class="pull-quote">
+      这就是博弈论里的协调失灵：当每个参与者都在追求自己的最优结果时，集体结果可能对所有人都是次优的。战争不是被决定的，是被结构推动的。这比任何阴谋都更难对付，因为没有一个可以被消灭的源头。
+    </div>
+  </div>
+
+  <div class="divider"><span class="divider-symbol">◆</span></div>
+
+  <!-- Part 2 -->
+  <div class="section" id="part2">
+    <div class="chapter-marker">
+      <div class="chapter-number">二</div>
+      <div class="chapter-info">
+        <div class="chapter-label">第二部分</div>
+        <div class="chapter-title">傲慢的结构性来源</div>
+      </div>
+    </div>
+
+    <h2>江学勤的三个历史类比</h2>
+    <p>2024年5月的那堂课里，江学勤用三个历史案例解释为什么美国会在伊朗战争中输掉。这三个案例共享同一个深层结构：强者以优势出发，在补给线断裂和沉没成本的双重压力下走向失败。</p>
+
+    <h3>雅典入侵西西里（公元前415年）</h3>
+    <p>公元前415年，雅典在与斯巴达的战争中陷入僵局。政客阿尔西比亚德提出入侵西西里，夺取财富来赢得对斯巴达的战争。反对者尼西阿斯试图用庞大的兵力需求来吓退支持者——结果雅典公民大会说：好，就派这么多去。</p>
+    <p>远征军建立滩头阵地，初期进展顺利。然后问题出现了：他们无法补给自己。锡拉丘兹的海军切断了补给线，进攻无法发起，撤退无路可走。三年后，远征军全军覆没，雅典帝国从此走向衰落。</p>
+    <blockquote>让雅典人做出这个决定的，不是战略判断，而是帝国傲慢——他们从来没有真正输过一场战争，所以无法想象失败。</blockquote>
+
+    <h3>越南战争（1965—1975年）</h3>
+    <p>五角大楼文件后来证实，美国军事领导层在1960年代中期就已经知道战争无法赢得。但战争没有停止，又持续了将近十年，58000名美军士兵战死。</p>
+    <p>原因不是战略失误，是沉没成本谬误。投入了太多，不能承认浪费了。任何提出撤军的政治人物都要面对"谁输掉了越南"的指控。系统性的激励机制让继续错误成为理性选择。</p>
+
+    <h3>俄乌战争（2022—至今）</h3>
+    <p>俄乌战争提供了离伊朗战争最近的历史参照。欧洲押注俄罗斯失败，输送了三年援助，结果是能源危机、经济低迷、国库空虚。美国军工赚得盆满钵满。中国在世界注意力被乌克兰吸走的三年里，完成了新能源产能超越全球总和、电动车渗透率超过50%的战略发展。</p>
+    <p>这个模式在伊朗战争中正在重演：美国主导战争，军工受益，中国旁观并赢得发展时间。</p>
+
+    <h2>以色列的单方面行动与战略劫持</h2>
+    <p>这场战争有一个关键的转折点，是理解整个博弈结构的钥匙。</p>
+    <p>在战争爆发之前，美国和伊朗正在进行第三轮谈判。调停方阿曼确认，伊朗已同意接受零库存浓缩铀的原则——这是伊朗历史上最大幅度的核让步。谈判崩溃后，双方对外都说谈得不错，期待下一轮。</p>
+    <p>以色列听到的是：美伊即将达成协议。</p>
+    <p>以色列不能接受这个结果。于是以色列抢先动手，斩首了哈梅内伊。</p>
+    <p>特朗普失去了可以谈判的伊朗领袖。新的最高领袖候选人没有哈梅内伊执政37年建立的权威，任何妥协都会被视为对烈士的背叛。美国的战略被以色列的战术行动劫持了。</p>
+
+    <div class="pull-quote">
+      傲慢不是心理问题，而是结构性问题。当一个体系的激励机制系统性地奖励傲慢、惩罚谦逊，傲慢就成了理性选择——至少在短期内是。McGinnis因为公开承认美国有它不应该打的战争，而骨折被捕——这精确地反映了美国政治体系对这种声音的承受能力。
+    </div>
+  </div>
+
+  <div class="divider"><span class="divider-symbol">◆</span></div>
+
+  <!-- Part 3 -->
+  <div class="section" id="part3">
+    <div class="chapter-marker">
+      <div class="chapter-number">三</div>
+      <div class="chapter-info">
+        <div class="chapter-label">第三部分</div>
+        <div class="chapter-title">信誉的崩塌与权力的重新计价</div>
+      </div>
+    </div>
+
+    <h2>谈判桌上被打的代价</h2>
+    <p>伊朗在谈判中展示了真实的善意——接受零库存浓缩铀原则是重大让步——然后在谈判桌上被打了。</p>
+    <p>这个教训不只属于伊朗。它向所有在观察这场战争的国家传递了一个明确信号：对美国展示善意是危险的，因为善意会被解读为软弱，软弱会被利用为动手的时机。</p>
+    <p>这个信号的破坏力，比任何军事打击都更深远。朝鲜会更坚定地拒绝任何弃核谈判。全球南方国家看到的是：美国连自己主导的谈判进程都无法控制，或者选择不控制。</p>
+
+    <h2>市场的诚实投票</h2>
+    <p>在外交辞令之外，有一个评论员从不说谎：市场。</p>
+    <p>战争爆发后，黄金上涨，美元贬值，资本外逃。这三个信号组合在一起，传递的不是对战争结果的预测，而是对美元体系稳定性的重新评估——一个在自己主导的谈判进程中途动用武力的超级大国，作为全球金融体系基石的可信度正在被重新计价。</p>
+
+    <h2>川习会谈：两种世界秩序观的面对面</h2>
+    <p>战争爆发之前，川习会谈的议程已经确定。伊朗战争闯入了这个既定框架，使这次会谈的性质发生了根本改变。</p>
+    <p>特朗普带着一场还没结束的战争走进会谈室，时间压力以月计算。习近平带着战略性沉默积累的筹码——伊朗停火的钥匙、稀土资源的控制权——时间压力以年计算。</p>
+    <blockquote>在谈判学里，时间压力不对称是最重要的结构性变量之一。更急的那一方通常做出更多让步。</blockquote>
+    <p>但这次会谈的真正历史意义超越了具体让步。2003年美国打伊拉克，不需要和任何人商量。2026年美国打伊朗，打完了还要专程飞去和习近平坐下来谈——这个对比精确地描述了单极世界是如何走向终结的。</p>
+  </div>
+
+  <div class="divider"><span class="divider-symbol">◆</span></div>
+
+  <!-- Part 4 -->
+  <div class="section" id="part4">
+    <div class="chapter-marker">
+      <div class="chapter-number">四</div>
+      <div class="chapter-info">
+        <div class="chapter-label">第四部分</div>
+        <div class="chapter-title">掠食者的困境</div>
+      </div>
+    </div>
+
+    <h2>美国为什么必须收割</h2>
+    <p>美元作为全球储备货币，让美国能够多印钱而不立刻承担通胀后果。但这个特权有内在的维持成本：需要全世界持续接受美元、持有美元资产、用美元结算。</p>
+    <p>俄乌战争是一个完成度很高的案例。欧洲押注俄罗斯失败，输送三年援助，结果是能源危机让欧洲制造业在美国补贴的吸引下大规模迁往美国。德国的去工业化不是偶然，是资本流动的必然结果。</p>
+    <p>伊朗战争在复制相似的结构：海湾国家的石油财富，在地区动荡的驱动下，会倾向于寻找更安全的避风港——最自然的目的地是美元资产。</p>
+
+    <h2>中国：唯一未被收割的主要经济体</h2>
+    <p>欧洲通过马歇尔计划进入了美元体系。日本韩国在冷战架构下成为美国金融体系的配套。中东产油国通过石油美元协议把石油收入投回美国国债。</p>
+    <p>中国是唯一一个体量足够大、同时还没有被纳入这个资本收割体系的主要经济体。不是因为美国没有尝试，而是因为中国的资本账户管控、土地国有制、数字人民币的推进，系统性地阻止了这种整合。</p>
+
+    <h2>农耕者与掠食者</h2>
+    <p>用更简洁的框架描述这场博弈：美国是掠食者模式，中国是农耕者模式。掠食者需要持续猎物，在猎物充足时无敌，在猎物耗尽时崩溃。农耕者需要稳定的土地和时间，在短期竞争中处于劣势，在长期积累中越来越强。</p>
+    <p>2024年，中国可再生能源装机容量超过了世界其他国家的总和。电动车渗透率超过50%。当中国的石油进口依赖从73%下降到50%以下，美国通过中东军事存在对中国施加的能源压力就会系统性地减弱。</p>
+
+    <div class="pull-quote">
+      美国的航空母舰可以控制霍尔木兹海峡的石油运输，但无法控制太阳能板的价值链，无法控制电池技术的扩散，无法控制海底电缆的铺设。军事霸权在能源转型的时代正在失去部分战略价值。
+    </div>
+  </div>
+
+  <div class="divider"><span class="divider-symbol">◆</span></div>
+
+  <!-- Part 5 -->
+  <div class="section" id="part5">
+    <div class="chapter-marker">
+      <div class="chapter-number">五</div>
+      <div class="chapter-info">
+        <div class="chapter-label">第五部分</div>
+        <div class="chapter-title">民主的质量与权力的承受能力</div>
+      </div>
+    </div>
+
+    <h2>亚里士多德没有解决的问题</h2>
+    <p>McGinnis骨折的那一刻，触碰了政治哲学里最古老的问题：一个声称是民主的体制，对真相的承受能力是多少？</p>
+    <p>亚里士多德把政体分为六种：正体三种（君主制、贵族制、共和制）为公共利益服务；变体三种（僭主制、寡头制、民主制）为统治者自身利益服务。他认为最好的政体是混合体——决策效率、智识精英、公民参与三者结合，相互制衡。两千四百年后，没有任何国家找到完美答案。</p>
+    <p>美国在形式上是共和制，实质上正在向寡头制漂移。McGinnis说的那句话在民调中有大量美国人支持，但说出来的代价是骨折和七项指控。这个对比划出了美国政治体制对某类真相的承受能力的上限。</p>
+
+    <h2>权力对真相的承受能力</h2>
+    <p>这是本文试图建立的最核心的分析框架。</p>
+    <p>不是民主vs专制，而是：这个权力结构，能承受多少真相的重量？承受能力越强，社会越健康；承受能力越弱，管控越严密——不管外壳是什么形式。</p>
+    <p>苏联不是因为太专制而崩溃，是因为积累了太多无法承受的真相。美国体制对选举结果的承受能力相对较强，但对某些特定真相的承受能力明显有上限——McGinnis的骨折划出了这条线。</p>
+    <blockquote>江学勤的视频一年前发布，几乎无人问津。不是因为他的分析没有价值，而是因为它在当时的政治氛围里太不舒服，没有传播的土壤。直到现实追上了预测，人们才回过头来听。这是真相传播的普遍规律：它的传播速度，取决于接收者愿意承受不舒适的能力。</blockquote>
+  </div>
+
+  <div class="divider"><span class="divider-symbol">◆</span></div>
+
+  <!-- Conclusion -->
+  <div class="section" id="conclusion">
+    <div class="chapter-marker">
+      <div class="chapter-number">结</div>
+      <div class="chapter-info">
+        <div class="chapter-label">结语</div>
+        <div class="chapter-title">棋局的幻觉与普通人的位置</div>
+      </div>
+    </div>
+
+    <p>这篇文章试图用博弈论的框架，理解2026年伊朗战争的深层逻辑。但博弈论的最大局限，正好也是这场战争最深的教训：它假设所有参与者都是理性的，都能清楚地看到自己的利益，都能做出最优选择。</p>
+    <p>现实是，傲慢蒙蔽了判断，沉没成本锁定了选择，制度性压力塑造了激励，利益渗透模糊了边界。</p>
+
+    <p>McGinnis理解这个现实。他不是战略家，只是一个打过仗、见过死亡的老兵。他走进国会听证室，不是因为他能改变什么，而是因为他无法继续接受一个用谎言维持的现实。江学勤用另一种方式触碰了同样的现实——用逻辑，在课堂上，免费，对所有人开放。</p>
+
+    <p>从旁观者的角度，几个结构性判断是清楚的：</p>
+
+    <div class="conclusion-grid">
+      <div class="conclusion-num">一</div>
+      <div class="conclusion-text">这场战争不是任何人精心计划的结果，而是多方利益向量的汇聚。没有总导演，但有共同的结果。</div>
+
+      <div class="conclusion-num">二</div>
+      <div class="conclusion-text">美国在这场博弈中的战略失误根源不在战术层面，而在制度层面。一个无法区分国家利益和被植入利益的政治体制，必然会在关键时刻做出被利益集团绑架的决策。</div>
+
+      <div class="conclusion-num">三</div>
+      <div class="conclusion-text">中国的旁观策略是理性的，但这个理性是有条件的——它依赖于中国能够继续保持战略定力，不被任何突发事件强迫放弃旁观者的位置。</div>
+
+      <div class="conclusion-num">四</div>
+      <div class="conclusion-text">这场战争对全球核不扩散体系的破坏，可能比任何军事结果都更深远。每个有能力的中等国家学到的教训是：只有核武器才是真正的安全保障。</div>
+    </div>
+
+    <div class="pull-quote">
+      当所有人都在理性追求自身利益时，之所以会集体走向一个没有人真正想要的结果，是因为没有人能同时看到整张棋盘。每个参与者都在优化自己能看到的那一部分，集体盲点制造了集体悲剧。<br><br>认识到这个问题的存在——看见棋局的幻觉——是任何真实解决方案的起点。
+    </div>
+
+    <p>McGinnis走进那个听证室，做的正是这件事。江学勤站在那个课堂上，做的也是这件事。他们都不是英雄，只是在各自的位置上，拒绝假装看不见。</p>
+
+    <blockquote>在所有这些巨大力量面前，看见真相本身就是一种抵抗。</blockquote>
+  </div>
+
+</main>
+
+<footer>
+  <span>棋局的幻觉 · 旁观者视角</span>
+  <span>2026年3月</span>
+</footer>
+
+<script>
+  // Progress bar
+  const progress = document.getElementById('progress');
+  const nav = document.getElementById('nav');
+
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.body.scrollHeight - window.innerHeight;
+    const pct = (scrollTop / docHeight) * 100;
+    progress.style.width = pct + '%';
+
+    if (scrollTop > 80) {
+      nav.classList.add('scrolled');
+    } else {
+      nav.classList.remove('scrolled');
+    }
+  });
+
+  // Intersection observer for sections
+  const sections = document.querySelectorAll('.section');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
